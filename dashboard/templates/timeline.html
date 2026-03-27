@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Timeline — DFIR Workbench{% endblock %}
+{% block nav_timeline %}active{% endblock %}
+{% block header_title %}System Log Activity (Timeline){% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">System Log / Timeline Activity</div>
+        <div class="card-actions">
+            <div class="toggle-group">
+                <button class="toggle-btn active">System</button>
+                <button class="toggle-btn">Apps</button>
+            </div>
+            <select class="btn btn-outline" style="border:none;font-weight:500" id="timeFilter" onchange="loadTimeline()">
+                <option value="all">Last 24 hours</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Timeline Graph replicating reference -->
+    <div style="height:250px;margin:2rem 0;position:relative">
+        <canvas id="mainTimeChart"></canvas>
+    </div>
+
+    <!-- Timeline List replicating right column of reference -->
+    <table class="data-list" style="margin-top:2rem">
+        <thead>
+            <tr>
+                <th>Incident Type</th>
+                <th style="width:150px;text-align:right">Timestamp</th>
+                <th style="width:100px;text-align:right">Action</th>
+            </tr>
+        </thead>
+        <tbody id="timelineBody">
+            {% for e in events[:10] %}
+            <tr>
+                <td style="font-weight:600">
+                    <span class="dot {% if loop.index0 % 2 == 0 %}dot-critical{% else %}dot-low{% endif %}"></span>
+                    {{ e.title }}
+                </td>
+                <td style="text-align:right;color:var(--text-muted);font-family:monospace">{{ e.event_time.strftime('%H:%M') if e.event_time else '-' }}</td>
+                <td style="text-align:right">
+                    <a href="/cases/{{ e.case_id }}" class="btn btn-outline">Details</a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not events %}
+            <tr><td colspan="3" style="text-align:center" class="text-muted">No log activity to display.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // Generate dummy chart resembling the reference line chart with 2 series
+    const ctx = document.getElementById('mainTimeChart');
+    if(!ctx) return;
+    new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: ['12:00', '14:00', '16:00', '18:00', '19:00', '19:00', '19:00'],
+            datasets: [
+                {
+                    label: 'System', data: [35, 20, 60, 50, 110, 45, 65, 55, 90],
+                    borderColor: '#121421', backgroundColor: 'transparent',
+                    borderWidth: 2, pointBackgroundColor: '#fff', pointBorderColor: '#121421',
+                    pointRadius: 4, pointHoverRadius: 6, tension: 0
+                },
+                {
+                    label: 'Apps', data: [15, 35, 40, 25, 75, 10, 60, 25, 80],
+                    borderColor: '#CBD5E1', backgroundColor: 'transparent',
+                    borderWidth: 2, pointBackgroundColor: '#fff', pointBorderColor: '#CBD5E1',
+                    pointRadius: 4, pointHoverRadius: 6, tension: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { grid: { color: '#E5E7EB', drawBorder: false, borderDash: [4,4] }, ticks: { color: '#9CA3AF', font: {family: 'Inter'} }, beginAtZero: true, max: 125 },
+                x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: {family: 'Inter'} } }
+            },
+            plugins: { legend: { display: false } },
+            interaction: { mode: 'index', intersect: false }
+        }
+    });
+
+    const realEvents = JSON.parse('{{ events_json|safe | replace("\\'", "\\\\'") }}' || '[]');
+    // Can optionally repopulate via realEvents here if doing full SPA logic
+});
+</script>
+{% endblock %}

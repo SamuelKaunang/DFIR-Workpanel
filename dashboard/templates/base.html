@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DFIR Workbench{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-body: #F4F6F8;
+            --bg-card: #FFFFFF;
+            --border-card: #E5E7EB;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --text-light: #9CA3AF;
+            --color-dark: #121421;
+            --color-light: #E5E7EB;
+            --color-dot-error: #DC2626;
+            --color-dot-warning: #D97706;
+            --color-dot-success: #059669;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex; height: 100vh; overflow: hidden;
+            letter-spacing: -0.01em; -webkit-font-smoothing: antialiased;
+        }
+        a { text-decoration: none; color: inherit; }
+
+        /* Sidebar emulation - in reference there is none visible, but we need navigation */
+        .sidebar {
+            width: 240px; background: var(--bg-card);
+            border-right: 1px solid var(--border-card);
+            display: flex; flex-direction: column; flex-shrink: 0;
+            padding: 1.5rem 1rem;
+        }
+        .brand { font-size: 1.1rem; font-weight: 700; margin-bottom: 2rem; padding: 0 0.5rem; letter-spacing: -0.02em; display:flex; align-items:center; gap:8px;}
+        .brand .dot { display:inline-block; width:12px; height:12px; border-radius:50%; background:var(--text-main); }
+        .nav-links { flex: 1; display:flex; flex-direction: column; gap: 4px; }
+        .nav-links a {
+            padding: 0.6rem 0.8rem; border-radius: 6px;
+            font-size: 0.85rem; font-weight: 500; color: var(--text-muted);
+            transition: all 0.2s;
+        }
+        .nav-links a:hover { background: #F9FAFB; color: var(--text-main); }
+        .nav-links a.active {
+            background: var(--text-main); color: #fff; font-weight: 600;
+        }
+
+        /* Main Content */
+        .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .topbar {
+            height: 64px; border-bottom: 1px solid var(--border-card);
+            background: var(--bg-card); display: flex; align-items: center;
+            padding: 0 2rem; justify-content: space-between; position:sticky; top:0; z-index:10;
+        }
+        .topbar h2 { font-size: 1rem; font-weight: 600; color: var(--text-main); }
+        .content { padding: 2rem; }
+
+        /* Unified Card styles */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 8px; padding: 1.25rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.2rem;
+        }
+        .card-title { font-size: 0.88rem; font-weight: 700; color: var(--text-main); }
+        .card-actions { display:flex; gap:8px; align-items:center;}
+        
+        /* Buttons */
+        .btn {
+            padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 600;
+            border-radius: 4px; cursor: pointer; transition: 0.2s;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-outline {
+            background: transparent; border: 1px solid var(--border-card);
+            color: var(--text-main);
+        }
+        .btn-outline:hover { background: #F9FAFB; border-color: #D1D5DB; }
+        .btn-solid {
+            background: var(--color-dark); border: 1px solid var(--color-dark);
+            color: #fff;
+        }
+        .btn-solid:hover { opacity: 0.9; }
+        
+        /* Status toggles (e.g. System | Apps) */
+        .toggle-group {
+            display: inline-flex; background: #fff;
+            border: 1px solid var(--border-card); border-radius: 6px; overflow: hidden;
+        }
+        .toggle-btn {
+            padding: 0.35rem 0.8rem; font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; background: transparent; border: none; color: var(--text-muted);
+            outline: none; font-family: 'Inter', sans-serif;
+        }
+        .toggle-btn.active { background: var(--color-dark); color: #fff; }
+
+        /* Tables & Lists */
+        .data-list { width: 100%; border-collapse: collapse; }
+        .data-list th {
+            text-align: left; padding: 0.5rem 0.75rem;
+            font-size: 0.7rem; font-weight: 500; color: var(--text-muted);
+            border-bottom: 1px solid var(--border-card);
+        }
+        .data-list td {
+            padding: 0.85rem 0.75rem; border-bottom: 1px solid var(--border-card);
+            font-size: 0.82rem; font-weight: 500; color: var(--text-main);
+        }
+        .data-list tr:last-child td { border-bottom: none; }
+        
+        /* Dots (Replacement for bulky badges) */
+        .dot {
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+            margin-right: 6px;
+        }
+        .dot-critical { background: var(--text-main); } /* Matching image dark dot */
+        .dot-high { background: var(--color-dot-error); }
+        .dot-medium { background: var(--color-dot-warning); }
+        .dot-low { background: var(--text-light); } /* Matching image gray dot */
+
+        /* Utility */
+        .text-xs { font-size: 0.75rem; }
+        .text-sm { font-size: 0.85rem; }
+        .text-muted { color: var(--text-muted); }
+        .font-semibold { font-weight: 600; }
+        .font-bold { font-weight: 700; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-4 { gap: 1rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .w-full { width: 100%; }
+        
+        input, select, textarea {
+            font-family: 'Inter', sans-serif;
+            border: 1px solid var(--border-card); padding: 0.4rem 0.6rem;
+            font-size: 0.8rem; border-radius: 4px; color: var(--text-main);
+            outline: none;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--text-main); }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">
+            <span class="dot" style="background:var(--color-dark);width:14px;height:14px"></span> DFIR WorkPanel
+        </div>
+        <nav class="nav-links">
+            <a href="/cases" class="{% block nav_cases %}{% endblock %}">Cases</a>
+            <a href="/artifacts" class="{% block nav_artifacts %}{% endblock %}">Artifacts</a>
+            <a href="/findings" class="{% block nav_findings %}{% endblock %}">Findings</a>
+            <a href="/timeline" class="{% block nav_timeline %}{% endblock %}">Timeline Activity</a>
+            <a href="/reports" class="{% block nav_reports %}{% endblock %}">Reports Exporter</a>
+        </nav>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <h2>{% block header_title %}Overview{% endblock %}</h2>
+            <div class="user-stamp text-xs font-semibold text-muted">SecOps Analyst</div>
+        </header>
+
+        <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; pointer-events: none;">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="toast-msg" style="pointer-events: auto; padding: 1rem 1.2rem; border-radius: 8px; border-left: 4px solid {% if category == 'success' %}var(--color-dot-success){% else %}var(--color-dot-error){% endif %}; background: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.1); font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; min-width: 300px; animation: slideIn 0.3s ease-out forwards;">
+                            <span style="display:flex; align-items:center;">
+                                <i class="fa-solid {% if category == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}" style="color: {% if category == 'success' %}var(--color-dot-success){% else %}var(--color-dot-error){% endif %}; margin-right: 12px; font-size: 1.1rem;"></i>
+                                {{ message }}
+                            </span>
+                            <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--text-light);font-size:1.2rem;margin-left:16px;">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    {% block scripts %}{% endblock %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toasts = document.querySelectorAll('.toast-msg');
+            toasts.forEach(toast => {
+                setTimeout(() => {
+                    toast.style.animation = 'fadeOut 0.4s forwards';
+                    setTimeout(() => toast.remove(), 400);
+                }, 4000);
+            });
+        });
+    </script>
+</body>
+</html>

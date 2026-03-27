@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Findings — DFIR Workbench{% endblock %}
+{% block nav_findings %}active{% endblock %}
+{% block header_title %}Alert Configurations & Violations{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;">
+    <!-- Left list mimicking "Client Request Activity / Security Incidents" tables -->
+    <div class="card" style="margin-bottom:0">
+        <div class="card-header">
+            <div class="card-title">All Detected Findings</div>
+            <select class="btn btn-outline" style="border:none;font-weight:500" id="querySev" onchange="window.location.search = '?sev=' + this.value">
+                <option value="all">Filter Severity</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+        
+        <table class="data-list">
+            <thead>
+                <tr>
+                    <th>Alert Name</th>
+                    <th>Trace IP / Priority</th>
+                    <th>Detected On</th>
+                    <th style="text-align:right">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in findings %}
+                <tr>
+                    <td style="font-weight:600">
+                        <span class="dot {% if f.severity == 'critical' %}dot-critical{% else %}dot-low{% endif %}"></span> {{ f.title }}
+                    </td>
+                    <td class="font-semibold text-muted">
+                        {% if f.severity == 'critical' %}<span style="color:var(--color-dot-error)">Very High</span>{% else %}Normal{% endif %}
+                    </td>
+                    <td class="text-muted">{{ f.timestamp.strftime('%H:%M') if f.timestamp else '-' }}</td>
+                    <td style="text-align:right"><a href="/cases/{{ f.case_id }}" class="btn btn-outline">Details</a></td>
+                </tr>
+                {% endfor %}
+                {% if not findings %}
+                 <tr><td colspan="4" class="text-center text-muted" style="padding:2rem">Zero violations present.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+        
+    </div>
+
+    <!-- Right static panel mirroring the Recent Alerts / Security Stats box -->
+    <div style="display:flex;flex-direction:column;gap:1.5rem">
+        <div class="card" style="margin-bottom:0;flex:1">
+            <div class="card-header">
+                <div class="card-title">System Log Activity Stats</div>
+            </div>
+            <div style="text-align:center;margin-top:2rem;">
+                <div style="font-size:2.5rem;font-weight:400;color:var(--text-main);line-height:1">{{ findings|selectattr('severity','equalto','critical')|list|length }}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;margin-top:4px">Critical Findings</div>
+            </div>
+            <div style="text-align:center;margin-top:2rem;">
+                <div style="font-size:2.5rem;font-weight:400;color:var(--text-main);line-height:1">{{ findings|selectattr('severity','equalto','medium')|list|length }}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;margin-top:4px">Medium Severity</div>
+            </div>
+            <div style="text-align:center;margin-top:2rem;">
+                <div style="font-size:2.5rem;font-weight:400;color:var(--text-main);line-height:1">0</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;margin-top:4px">Resolved</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

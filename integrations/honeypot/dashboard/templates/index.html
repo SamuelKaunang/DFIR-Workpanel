@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Honeypot Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #0f172a; color: #e2e8f0; }
+
+    .header {
+      background: #1e293b; padding: 16px 24px;
+      border-bottom: 1px solid #334155;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .dot { width: 10px; height: 10px; border-radius: 50%;
+           background: #22c55e; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 16px; padding: 20px;
+    }
+    .card {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 10px; padding: 18px;
+    }
+    .card h3 { font-size: 12px; color: #94a3b8;
+               text-transform: uppercase; margin-bottom: 8px; }
+    .card .val { font-size: 32px; font-weight: 700; }
+
+    .charts-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; padding: 0 20px 20px;
+    }
+    .chart-card {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 10px; padding: 18px;
+    }
+    .chart-card h3 { font-size: 13px; color: #94a3b8; margin-bottom: 14px; }
+
+    .feed { padding: 0 20px 32px; }
+    .feed-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 12px;
+    }
+    .feed-header h3 { font-size: 13px; color: #94a3b8;
+                      text-transform: uppercase; }
+
+    .controls { display: flex; gap: 8px; align-items: center; }
+    .filter-btn {
+      padding: 5px 14px; border-radius: 16px; font-size: 12px;
+      border: 1px solid #334155; background: transparent;
+      color: #94a3b8; cursor: pointer; transition: all .15s;
+    }
+    .filter-btn:hover { border-color: #64748b; color: #e2e8f0; }
+    .filter-btn.active { color: #fff; border-color: transparent; }
+    .filter-btn.active.all  { background: #475569; }
+    .filter-btn.active.SSH  { background: #4c1d95; }
+    .filter-btn.active.HTTP { background: #1e3a5f; }
+    .filter-btn.active.FTP  { background: #064e3b; }
+
+    .export-btn {
+      padding: 5px 14px; border-radius: 16px; font-size: 12px;
+      border: 1px solid #334155; background: transparent;
+      color: #94a3b8; cursor: pointer; transition: all .15s;
+    }
+    .export-btn:hover { border-color: #22c55e; color: #22c55e; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #1e293b; }
+    th { padding: 10px 14px; text-align: left; font-size: 12px;
+         color: #64748b; border-bottom: 1px solid #334155; }
+    td { padding: 10px 14px; font-size: 13px;
+         border-bottom: 1px solid #1e293b; }
+    tr:hover td { background: #1e293b; }
+
+    .badge { padding: 3px 10px; border-radius: 12px;
+             font-size: 11px; font-weight: 600; }
+    .SSH  { background: #4c1d95; color: #c4b5fd; }
+    .HTTP { background: #1e3a5f; color: #93c5fd; }
+    .FTP  { background: #064e3b; color: #6ee7b7; }
+
+    code { font-family: monospace; font-size: 12px; color: #94a3b8; }
+
+    .detail-btn {
+      padding: 3px 10px; border-radius: 6px; font-size: 11px;
+      border: 1px solid #334155; background: transparent;
+      color: #64748b; cursor: pointer; transition: all .15s;
+    }
+    .detail-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 12px; padding: 24px;
+      width: 640px; max-width: 90vw; max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 20px;
+    }
+    .modal-header h2 { font-size: 16px; font-weight: 600; }
+    .close-btn {
+      background: transparent; border: none;
+      color: #64748b; font-size: 20px; cursor: pointer;
+    }
+    .close-btn:hover { color: #e2e8f0; }
+    .detail-row {
+      display: flex; gap: 12px; margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .detail-label {
+      color: #64748b; min-width: 100px; flex-shrink: 0;
+    }
+    .detail-val { color: #e2e8f0; word-break: break-all; }
+    .raw-box {
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 8px; padding: 14px; margin-top: 14px;
+      font-family: monospace; font-size: 12px; color: #94a3b8;
+      white-space: pre-wrap; word-break: break-all;
+      max-height: 200px; overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="dot"></div>
+  <h1>Honeypot Dashboard</h1>
+</div>
+
+<div class="stats-grid">
+  <div class="card">
+    <h3>Total hits</h3>
+    <div class="val" id="total">—</div>
+  </div>
+  <div class="card">
+    <h3>Unique IPs</h3>
+    <div class="val" id="unique">—</div>
+  </div>
+  <div class="card">
+    <h3>Last updated</h3>
+    <div class="val" id="last-update" style="font-size:16px;margin-top:8px">—</div>
+  </div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card">
+    <h3>Hits by service</h3>
+    <canvas id="svcChart" height="180"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>Top attacker IPs</h3>
+    <canvas id="ipChart" height="180"></canvas>
+  </div>
+</div>
+
+<div class="feed">
+  <div class="feed-header">
+    <h3>Live attack feed</h3>
+    <div class="controls">
+      <button class="filter-btn active all" onclick="setFilter('ALL')">All</button>
+      <button class="filter-btn SSH" onclick="setFilter('SSH')">SSH</button>
+      <button class="filter-btn HTTP" onclick="setFilter('HTTP')">HTTP</button>
+      <button class="filter-btn FTP" onclick="setFilter('FTP')">FTP</button>
+      <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th><th>Service</th><th>IP</th>
+        <th>Country</th><th>Detail</th><th></th>
+      </tr>
+    </thead>
+    <tbody id="feed-body"></tbody>
+  </table>
+</div>
+
+<!-- Modal detail -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Event detail</h2>
+      <button class="close-btn" onclick="closeModalDirect()">×</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

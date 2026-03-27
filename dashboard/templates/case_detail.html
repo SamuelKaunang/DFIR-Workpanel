@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Case Details — DFIR Workbench{% endblock %}
+{% block nav_cases %}active{% endblock %}
+{% block header_title %}Configuration & Client Requests (Case Focus){% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+
+    <!-- Card 1: Recommended Configurations Style (Findings & Artifacts list) -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Case Context & Artifacts [{{ case.case_id }}]</div>
+        </div>
+        
+        <table class="data-list">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in findings %}
+                <tr>
+                    <td style="font-weight:600">{{ f.title }}</td>
+                    <td class="text-xs font-semibold">
+                        <span class="dot {% if f.severity == 'critical' %}dot-critical{% else %}dot-low{% endif %}"></span> {{ f.severity|capitalize }}
+                    </td>
+                    <td>
+                        <span style="font-weight:600;color:var(--text-main)"><i class="fa-solid fa-shield" style="font-size:0.7rem;color:var(--color-dot-error)"></i> Not enabled</span>
+                    </td>
+                    <td style="text-align:right"><button class="btn btn-outline" disabled>Linked</button></td>
+                </tr>
+                {% endfor %}
+                {% if not findings %}
+                <tr><td colspan="4" class="text-muted text-center">No anomalies recorded in configuration scope.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Card 2: Security Incidents Style Bar Chart -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Case Specific Incidents</div>
+            <div class="card-actions">
+                <div class="toggle-group">
+                    <button class="toggle-btn active">System</button>
+                    <button class="toggle-btn">Apps</button>
+                </div>
+                <select class="btn btn-outline" style="border:none;font-weight:500">
+                    <option>Last 24 hours</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="height:180px;position:relative;margin-top:1.5rem">
+            <canvas id="incidentBarChart"></canvas>
+        </div>
+        
+        <table class="data-list" style="margin-top:1rem">
+            <thead>
+                <tr><th colspan="2">Incident Type</th><th style="text-align:right">Action</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="2" style="font-weight:600"><span class="dot dot-critical"></span> Unauthorized Access</td>
+                    <td style="text-align:right"><button class="btn btn-outline">Resolve</button></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="font-weight:600"><span class="dot dot-low"></span> Network Segmentation Disabled</td>
+                    <td style="text-align:right"><button class="btn btn-outline">Resolve</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Map / Activity block mimicking bottom left -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Client Request Activity Logs</div>
+        <div class="card-actions">
+            <!-- Add Export Feature here -->
+            <form method="POST" action="/reports/generate/{{ case.case_id }}" style="margin:0">
+                <button type="submit" class="btn btn-solid" style="margin-left:14px">Extract Case Report PDF</button>
+            </form>
+        </div>
+    </div>
+    
+    <div style="display:flex;gap:2rem">
+        <!-- Pseudo Map Graphic container -->
+        <div style="flex:1;position:relative;min-height:220px;border:1px solid var(--border-card);border-radius:8px;background:url('https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg') no-repeat center center;background-size:contain;opacity:0.6;display:flex;flex-direction:column;justify-content:flex-end;padding:1rem">
+            <div style="display:flex;gap:1rem;background:rgba(255,255,255,0.8);padding:6px;border-radius:4px;width:fit-content;backdrop-filter:blur(4px)">
+               <span class="text-xs font-semibold"><span class="dot dot-critical"></span> Outbound Requests</span> 
+               <span class="text-xs font-semibold"><span class="dot" style="border:2px solid var(--text-main);background:transparent"></span> Inbound Requests</span> 
+            </div>
+        </div>
+        
+        <div style="flex:1">
+            <table class="data-list">
+                <thead>
+                    <tr><th>Client IP</th><th>Violations</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="font-semibold text-muted">10.102.98.23.00</td>
+                        <td class="font-semibold">328 <span style="color:var(--color-dot-error);font-size:0.7rem">&#8593;2.4%</span></td>
+                        <td style="text-align:right"><button class="btn btn-outline">Resolve</button></td>
+                    </tr>
+                    <tr>
+                        <td class="font-semibold text-muted">10.102.98.23.01</td>
+                        <td class="font-semibold">100 <span style="color:var(--color-dot-error);font-size:0.7rem">&#8595;2.4%</span></td>
+                        <td style="text-align:right"><button class="btn btn-outline">Resolve</button></td>
+                    </tr>
+                    <tr>
+                        <td class="font-semibold text-muted">10.102.98.23.02</td>
+                        <td class="font-semibold">328 <span style="color:var(--color-dot-error);font-size:0.7rem">&#8593;2.4%</span></td>
+                        <td style="text-align:right"><button class="btn btn-outline">Resolve</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const ctx = document.getElementById('incidentBarChart');
+    if(!ctx) return;
+    new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['00:00', '01:00', '04:00', '06:00', '08:00', '12:00', '16:00'],
+            datasets: [
+                {
+                    label: 'System', data: [90, 70, 85, 105, 60, 70, 105],
+                    backgroundColor: '#121421', barPercentage: 0.15, borderRadius:2
+                },
+                {
+                    label: 'Apps', data: [100, 85, 95, 0, 70, 0, 20],
+                    backgroundColor: '#CBD5E1', barPercentage: 0.15, borderRadius:2
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { grid: { color: '#E5E7EB', borderDash: [4,4], drawBorder: false }, ticks: { color: '#9CA3AF', font: {family: 'Inter'}, stepSize:25 }, beginAtZero: true, max:100 },
+                x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: {family: 'Inter'} } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Reports — DFIR Workbench{% endblock %}
+{% block nav_reports %}active{% endblock %}
+{% block header_title %}Report Extract Activity{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+        <div class="card-title">Extract Automated Log Activity Report</div>
+        <div class="card-actions">
+            <!-- Direct form mirroring "Configure" box behavior -->
+            <form method="POST" action="/reports/generate" style="margin:0;display:flex;gap:8px;">
+                <select name="case_id" required>
+                    <option value="" disabled selected>Select Incident Base...</option>
+                    {% for c in cases %}
+                    <option value="{{ c.case_id }}">{{ c.title }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-solid">Download</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Client Log Downloads</div>
+    </div>
+    <table class="data-list">
+        <thead>
+            <tr>
+                <th>Extracted Log Name</th>
+                <th>Origin IP / Case ID</th>
+                <th>Time Extracted</th>
+                <th>Weight</th>
+                <th style="text-align:right">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in reports %}
+            <tr>
+                <td style="font-weight:600">
+                    <span class="dot dot-critical"></span> {{ r.filename }}
+                </td>
+                <td class="font-semibold text-muted">{{ r.case_id }}</td>
+                <td class="text-muted"><span style="color:var(--color-dot-error);font-size:0.7rem">&#8593;</span> {{ r.generated_at }}</td>
+                <td class="text-muted">{{ r.size }}</td>
+                <td style="text-align:right">
+                    <a href="/reports/download/{{ r.filename }}" class="btn btn-outline" target="_blank">Download</a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not reports %}
+            <tr><td colspan="5" class="text-center text-muted" style="padding:2rem">No client logs extracted yet.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
